@@ -81,11 +81,9 @@ jobs:
             out="$(curl "${curl_args[@]}" 2>/dev/null || echo "curl_error,0,0,0,0,0,0")"
             echo "${ts},${AGENT},${out}" | tee -a "results_agent_${AGENT}.csv" >/dev/null
 
-            # sleep in ms (python is available on ubuntu-latest)
-            python3 - <<PY
-import time
-time.sleep(int(${INTERVAL_MS})/1000)
-PY
+            # sleep in ms 
+            python3 -c "import time; time.sleep(int('$INTERVAL_MS')/1000)"
+ 
           done
 
       - name: Upload results
