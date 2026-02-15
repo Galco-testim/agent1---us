@@ -6,7 +6,6 @@
     echo ""
     echo "Geo info:"
     curl -s https://ipinfo.io
-
 name: CWAAF HC (10s) via IP override
 
 on:
