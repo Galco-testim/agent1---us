@@ -34,41 +34,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        agent: [1, 2, 3, 4, 5]   # כמה אייג'נטים במקביל. תשנה ל-10 אם בא לך.
+        agent: [1, 2, 3, 4, 5]   # שנה ל-10 אם בא לך
 
     steps:
-      - name: Run 10s HC test with --resolve (no DNS)
+      - name: Run HC test with --resolve (no DNS)
         shell: bash
         env:
           URL: ${{ inputs.url }}
           IP: ${{ inputs.ip }}
-          SECONDS: ${{ inputs.seconds }}
+          DURATION: ${{ inputs.seconds }}
           INTERVAL_MS: ${{ inputs.interval_ms }}
           INSECURE_TLS: ${{ inputs.insecure_tls }}
           AGENT: ${{ matrix.agent }}
         run: |
           set -euo pipefail
 
-          # Parse host/port/path from URL (expects https://host/path)
+          # Parse host from URL (expects https://host/...)
           host="$(echo "$URL" | sed -E 's#^https?://([^/:]+).*#\1#')"
           proto="$(echo "$URL" | sed -E 's#^(https?).*#\1#')"
           if [ "$proto" != "https" ]; then
             echo "Only https is supported. Got: $proto"
             exit 1
           fi
+
           port="443"
 
-          echo "agent=$AGENT url=$URL host=$host ip=$IP seconds=$SECONDS interval_ms=$INTERVAL_MS insecure_tls=$INSECURE_TLS"
-          echo "ts,agent,http_code,remote_ip,ssl_verify_result,time_connect,time_appconnect,time_starttransfer,time_total" > results_agent_${AGENT}.csv
+          echo "agent=$AGENT url=$URL host=$host ip=$IP duration=${DURATION}s interval_ms=$INTERVAL_MS insecure_tls=$INSECURE_TLS"
+          echo "ts,agent,http_code,remote_ip,ssl_verify_result,time_connect,time_appconnect,time_starttransfer,time_total" > "results_agent_${AGENT}.csv"
 
-          end=$((SECONDS + ${SECONDS}))
-          # NOTE: uses bash SECONDS var, so store start.
-          start=$SECONDS
+          start_epoch="$(date +%s)"
+          end_epoch="$((start_epoch + DURATION))"
 
-          while [ $SECONDS -lt $((start + SECONDS)) ]; do
+          while [ "$(date +%s)" -lt "$end_epoch" ]; do
             ts="$(date -Is)"
 
-            # Build curl args
             curl_args=(-sS -o /dev/null
               --resolve "${host}:${port}:${IP}"
               -w "%{http_code},%{remote_ip},%{ssl_verify_result},%{time_connect},%{time_appconnect},%{time_starttransfer},%{time_total}"
@@ -80,12 +79,12 @@ jobs:
             fi
 
             out="$(curl "${curl_args[@]}" 2>/dev/null || echo "curl_error,0,0,0,0,0,0")"
-            echo "${ts},${AGENT},${out}" | tee -a results_agent_${AGENT}.csv >/dev/null
+            echo "${ts},${AGENT},${out}" | tee -a "results_agent_${AGENT}.csv" >/dev/null
 
-            # sleep in ms
+            # sleep in ms (python is available on ubuntu-latest)
             python3 - <<PY
 import time
-time.sleep(${INTERVAL_MS}/1000)
+time.sleep(int(${INTERVAL_MS})/1000)
 PY
           done
 
