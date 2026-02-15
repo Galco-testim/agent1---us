@@ -1,12 +1,11 @@
-steps:
-  - name: Show runner public IP + country
-    run: |
-      curl -s https://api.ipify.org
-      echo ""
-      curl -s https://ipinfo.io
-
-  - name: Run HC test
-    run: |
+- name: Show runner public IP + country
+  shell: bash
+  run: |
+    echo "Public IP:"
+    curl -s https://api.ipify.org
+    echo ""
+    echo "Geo info:"
+    curl -s https://ipinfo.io
 
 name: CWAAF HC (10s) via IP override
 
